@@ -43,7 +43,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 2. Turn on **Allow display over other apps** for EDGE. Opening that screen is not treated as a grant. The app reads `Settings.canDrawOverlays` when you return.
 3. Activate EDGE. A notification stays visible while the overlay is running.
 4. Leave the app. The handle is on the right edge (or the left edge, if you switch it on the dashboard).
-5. Tap the handle, or swipe it inward, to open the panel. Tap Close, tap the handle, or tap outside the panel to close it.
+5. Tap the handle, or swipe it inward, to open the panel. It holds shortcuts, a clipboard note, and apps. Tap Close, tap the handle, or tap outside the panel to close it. Appearance, visibility, and pinned apps are on the EDGE screen.
 6. Long-press or drag the handle vertically to move it.
 7. Stop EDGE from the notification action or the dashboard. Both overlay windows are removed.
 

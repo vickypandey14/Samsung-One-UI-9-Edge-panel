@@ -11,6 +11,8 @@ EDGE requests only what this foundation uses.
 
 Not requested, and not present in the manifest: accessibility, `QUERY_ALL_PACKAGES`, storage, contacts, location, microphone, camera, internet, `VIBRATE`, boot completed, battery-optimization exemption, root, Shizuku, or ADB.
 
+Launcher apps are discovered with a `<queries>` intent for `ACTION_MAIN` / `CATEGORY_LAUNCHER`. That is the supported package-visibility declaration. It is not `QUERY_ALL_PACKAGES`. The flashlight calls `CameraManager.setTorchMode`, which does not need the camera permission. Clipboard reads and writes use `ClipboardManager` only. Reading still depends on One UI giving the clip to the focused panel.
+
 Haptics on long-press use `View.performHapticFeedback`. That follows the system haptic setting and does not need `VIBRATE`.
 
 ## Why `specialUse`
@@ -21,7 +23,7 @@ EDGE does not use any of those device capabilities. Its work is a user-invoked o
 
 The manifest property `android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE` says that in plain language: a user-invoked floating edge panel drawn with `TYPE_APPLICATION_OVERLAY`, kept up until the user stops EDGE, and not using camera, microphone, location, media playback, data sync, phone calls, or connected devices.
 
-`startForeground` passes `FOREGROUND_SERVICE_TYPE_SPECIAL_USE` only on API 34 and newer. On API 29 through 33 the platform does not know that constant, so the service uses the older two-argument `startForeground`. The primary device is API 37, which takes the typed path.
+`startForeground` passes `FOREGROUND_SERVICE_TYPE_SPECIAL_USE` only on API 34 and newer. On API 29 through 33 the platform does not know that constant, so the service uses the older two-argument `startForeground`. API 37 takes the typed path.
 
 Play Console review of `specialUse` is not part of this task. The subtype string is written for that review anyway.
 

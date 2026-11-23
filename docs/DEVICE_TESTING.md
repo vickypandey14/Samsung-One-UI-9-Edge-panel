@@ -10,7 +10,7 @@ Command, run from the project root with JDK 17:
 gradlew.bat :app:testDebugUnitTest
 ```
 
-Latest local unit-test run: **41 tests, 0 failures, 0 errors.**
+Latest local unit-test run: **43 tests, 0 failures, 0 errors.**
 
 | Suite | Tests |
 | --- | --- |
@@ -21,6 +21,7 @@ Latest local unit-test run: **41 tests, 0 failures, 0 errors.**
 | Panel left/right geometry | 4 |
 | Gesture classification | 9 |
 | Design-token spec | 1 |
+| Preference bounds and quips | 2 |
 
 These tests do not need the phone. They cover permission evaluation, session transitions (activate, open, close, reverse mid-animation, stop, permission revocation, fraction clamp), handle bounds, panel placement, and gesture direction.
 

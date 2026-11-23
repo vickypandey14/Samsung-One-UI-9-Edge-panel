@@ -17,6 +17,11 @@ import dev.edgepanel.app.core.datastore.EdgePreferences
 import dev.edgepanel.app.core.datastore.EdgePreferencesRepository
 import dev.edgepanel.app.core.permissions.OverlayPermissionDataSource
 import dev.edgepanel.app.domain.OverlayEffect
+import dev.edgepanel.app.features.apps.LaunchableApp
+import dev.edgepanel.app.features.apps.LaunchableAppCatalog
+import dev.edgepanel.app.features.clipboard.EdgeClipboard
+import dev.edgepanel.app.features.shortcuts.EdgeShortcut
+import dev.edgepanel.app.features.shortcuts.EdgeShortcutActions
 import dev.edgepanel.app.domain.ServicePhase
 import dev.edgepanel.app.domain.OverlayEvent
 import dev.edgepanel.app.domain.PanelPhase
@@ -42,6 +47,9 @@ class EdgeOverlayService : Service() {
     @Inject lateinit var logger: EdgeLogger
     @Inject lateinit var dispatchers: DispatcherProvider
     @Inject lateinit var notifier: OverlayNotifier
+    @Inject lateinit var apps: LaunchableAppCatalog
+    @Inject lateinit var clipboard: EdgeClipboard
+    @Inject lateinit var shortcuts: EdgeShortcutActions
 
     private val serviceJob = SupervisorJob()
     private lateinit var scope: CoroutineScope
@@ -51,6 +59,7 @@ class EdgeOverlayService : Service() {
     private var stopping: Boolean = false
     private var handleDragActive: Boolean = false
     private var dragTop: Float? = null
+    private var openAfterStart: Boolean = false
     private var watchersRegistered: Boolean = false
 
     private val appOps: AppOpsManager by lazy { getSystemService(AppOpsManager::class.java) }
@@ -91,13 +100,23 @@ class EdgeOverlayService : Service() {
             onDrag = ::onDrag,
             onDragFinished = ::onDragFinished,
             onWindowError = ::onWindowError,
+            preferences = preferences,
+            apps = apps,
+            clipboard = clipboard,
+            shortcuts = shortcuts,
+            onScratch = ::onScratch,
+            onCopyScratch = ::onCopyScratch,
+            onReadClipboard = ::onReadClipboard,
+            onShortcut = ::onShortcut,
+            onLaunchApp = ::onLaunchApp,
         )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> stopOverlay()
-            ACTION_START -> startOverlay()
+            ACTION_OPEN -> startOverlay(openPanel = true)
+            ACTION_START -> startOverlay(openPanel = false)
             else -> if (!running) stopSelf()
         }
         return START_NOT_STICKY
@@ -106,14 +125,19 @@ class EdgeOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        if (::shortcuts.isInitialized) shortcuts.turnTorchOff()
         unregisterWatchers()
         if (::windows.isInitialized) windows.detachAll()
         serviceJob.cancel()
         super.onDestroy()
     }
 
-    private fun startOverlay() {
-        if (running || stopping) return
+    private fun startOverlay(openPanel: Boolean) {
+        if (running || stopping) {
+            if (openPanel && running) requestOpen()
+            return
+        }
+        openAfterStart = openPanel
         enterForeground()
         if (!permissions.canDrawOverlays()) {
             logger.error("Refusing to draw EDGE because overlay permission is not granted.")
@@ -130,8 +154,13 @@ class EdgeOverlayService : Service() {
                 if (stopping) return@launch
                 session.dispatch(OverlayEvent.EdgeChanged(initial.edge))
                 session.dispatch(OverlayEvent.HandleMoved(initial.handleYFraction))
+                windows.updateLook(initial)
                 if (stopping) return@launch
                 execute(session.dispatch(OverlayEvent.Activated))
+                if (openAfterStart) {
+                    openAfterStart = false
+                    requestOpen()
+                }
                 if (stopping) {
                     execute(session.dispatch(OverlayEvent.Deactivated))
                     return@launch
@@ -185,13 +214,82 @@ class EdgeOverlayService : Service() {
     }
 
     private fun onHandleTap(panelWasOpen: Boolean) {
-        val event = if (panelWasOpen) OverlayEvent.CloseRequested else OverlayEvent.OpenRequested
-        execute(session.dispatch(event))
+        if (panelWasOpen) {
+            execute(session.dispatch(OverlayEvent.CloseRequested))
+        } else {
+            requestOpen()
+        }
     }
 
     private fun onInwardSwipe() {
         if (session.state.value.panelPhase != PanelPhase.Closed) return
-        execute(session.dispatch(OverlayEvent.OpenRequested))
+        requestOpen()
+    }
+
+    private fun requestOpen() {
+        val effects = session.dispatch(OverlayEvent.OpenRequested)
+        if (effects.isEmpty()) return
+        scope.launch { preferences.incrementBoops() }
+        execute(effects)
+    }
+
+    private fun onScratch(text: String) {
+        scope.launch { preferences.setScratch(text) }
+    }
+
+    private fun onCopyScratch() {
+        scope.launch {
+            val note = preferences.preferences.first().scratch
+            if (note.isBlank()) {
+                clipboard.report("The note is empty.")
+            } else {
+                clipboard.write(note)
+            }
+        }
+    }
+
+    private fun onReadClipboard() {
+        windows.withPanelFocus {
+            val text = clipboard.read()
+            scope.launch {
+                if (text == null) {
+                    clipboard.report("One UI didn't share the clipboard. Focus the note and try Read again.")
+                } else {
+                    preferences.setScratch(text)
+                    clipboard.report("Clipboard replaced the note.")
+                }
+            }
+        }
+    }
+
+    private fun onShortcut(shortcut: EdgeShortcut) {
+        if (shortcut == EdgeShortcut.Torch) {
+            shortcuts.toggleTorch()
+            return
+        }
+        val intent = shortcuts.settingsIntent(shortcut) ?: return
+        try {
+            startActivity(intent)
+            execute(session.dispatch(OverlayEvent.CloseRequested))
+        } catch (error: android.content.ActivityNotFoundException) {
+            logger.error("EDGE could not open that settings screen.", error)
+            clipboard.report("That settings screen didn't open.")
+        }
+    }
+
+    private fun onLaunchApp(app: LaunchableApp) {
+        val component = android.content.ComponentName.unflattenFromString(app.component) ?: return
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
+            .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+            .setComponent(component)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            startActivity(intent)
+            execute(session.dispatch(OverlayEvent.CloseRequested))
+        } catch (error: android.content.ActivityNotFoundException) {
+            logger.error("EDGE could not open ${app.label}.", error)
+            clipboard.report("${app.label} didn't open.")
+        }
     }
 
     private fun onDrag(deltaY: Float) {
@@ -229,6 +327,7 @@ class EdgeOverlayService : Service() {
         if (!handleDragActive && prefs.handleYFraction != state.handleYFraction) {
             execute(session.dispatch(OverlayEvent.HandleMoved(prefs.handleYFraction)))
         }
+        windows.updateLook(prefs)
     }
 
     private fun execute(effects: List<OverlayEffect>) {
@@ -281,6 +380,7 @@ class EdgeOverlayService : Service() {
 
     companion object {
         const val ACTION_START = "dev.edgepanel.app.action.START"
+        const val ACTION_OPEN = "dev.edgepanel.app.action.OPEN"
         const val ACTION_STOP = "dev.edgepanel.app.action.STOP"
     }
 }

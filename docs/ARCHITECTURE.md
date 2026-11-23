@@ -55,6 +55,6 @@ WindowManager failures (`SecurityException`, `BadTokenException`, `IllegalArgume
 
 ## UI
 
-Onboarding and the dashboard are Compose screens in a Navigation `NavHost`. The dashboard can switch the stored edge. The service collects preference changes and relayouts. The panel body is placeholder text only. Clipboard, app lists, and the other future modules are not implemented.
+Onboarding and the dashboard are Compose screens in a Navigation `NavHost`. The dashboard stores the edge, handle visibility, size, opacity, skin, title, clipboard note, and pinned apps. The service collects those changes and relayouts. The panel opens shortcuts, that note, and launcher apps. Launcher apps are listed through a manifest `queries` intent, not `QUERY_ALL_PACKAGES`. The flashlight uses `CameraManager.setTorchMode` and does not request the camera permission.
 
 Dynamic color is not used. The accent stays the same restrained blue in light and dark so the first build does not depend on the wallpaper.

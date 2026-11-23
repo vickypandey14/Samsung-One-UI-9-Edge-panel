@@ -15,7 +15,11 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.PathInterpolator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.ViewCompat
@@ -26,11 +30,17 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.edgepanel.app.R
 import dev.edgepanel.app.core.common.EdgeLogger
-import dev.edgepanel.app.core.designsystem.EdgeTheme
+import dev.edgepanel.app.core.datastore.EdgePreferences
+import dev.edgepanel.app.core.datastore.EdgePreferencesRepository
 import dev.edgepanel.app.core.designsystem.EdgeTokens
 import dev.edgepanel.app.domain.DisplayFrame
 import dev.edgepanel.app.domain.EdgeSide
 import dev.edgepanel.app.domain.PanelPhase
+import dev.edgepanel.app.features.apps.LaunchableApp
+import dev.edgepanel.app.features.apps.LaunchableAppCatalog
+import dev.edgepanel.app.features.clipboard.EdgeClipboard
+import dev.edgepanel.app.features.shortcuts.EdgeShortcut
+import dev.edgepanel.app.features.shortcuts.EdgeShortcutActions
 import dev.edgepanel.app.overlay.gestures.HandleTouchBinder
 import dev.edgepanel.app.overlay.gestures.HandleTouchCallbacks
 import dev.edgepanel.app.overlay.handle.EdgeHandleFace
@@ -56,6 +66,15 @@ class OverlayWindows(
     private val onDrag: (Float) -> Unit,
     private val onDragFinished: () -> Unit,
     private val onWindowError: (Throwable) -> Unit,
+    private val preferences: EdgePreferencesRepository,
+    private val apps: LaunchableAppCatalog,
+    private val clipboard: EdgeClipboard,
+    private val shortcuts: EdgeShortcutActions,
+    private val onScratch: (String) -> Unit,
+    private val onCopyScratch: () -> Unit,
+    private val onReadClipboard: () -> Unit,
+    private val onShortcut: (EdgeShortcut) -> Unit,
+    private val onLaunchApp: (LaunchableApp) -> Unit,
 ) {
     private val reader = DisplayFrameReader()
     private var frame: DisplayFrame = reader.read(windowManager, context.resources.displayMetrics.density)
@@ -68,6 +87,7 @@ class OverlayWindows(
     private var loggedFrame: Boolean = false
     private var shuttingDown: Boolean = false
     private var ignoreOutsideUntilMs: Long = 0L
+    private var look: EdgePreferences = EdgePreferences()
     private val touchBinder: HandleTouchBinder
 
     init {
@@ -97,8 +117,73 @@ class OverlayWindows(
         HandleGeometry.verticalRange(frame, handleHeight()),
     )
 
+    fun updateLook(prefs: EdgePreferences) {
+        val previous = look
+        look = prefs
+        val visual = previous.handleVisible != prefs.handleVisible ||
+            previous.handleAlpha != prefs.handleAlpha ||
+            previous.handleHeightDp != prefs.handleHeightDp ||
+            previous.panelWidthDp != prefs.panelWidthDp
+        if (!visual) return
+        runWindow {
+            val active = session.state.value.servicePhase == dev.edgepanel.app.domain.ServicePhase.Active
+            if (!active) return@runWindow
+            if (prefs.handleVisible && handleView == null) {
+                attachHandle()
+                return@runWindow
+            }
+            if (!prefs.handleVisible) {
+                removeHandle()
+                return@runWindow
+            }
+            val params = handleParams ?: return@runWindow
+            val view = handleView ?: return@runWindow
+            params.alpha = prefs.handleAlpha
+            val docked = session.state.value.panelPhase == PanelPhase.Open
+            placeHandle(params, docked)
+            windowManager.updateViewLayout(view, params)
+            if (docked) layoutPanel(animated = false, open = true)
+        }
+    }
+
+    fun setPanelFocusable(focusable: Boolean) {
+        val params = panelParams ?: return
+        val view = panelView ?: return
+        try {
+            params.flags = if (focusable) {
+                params.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+            } else {
+                params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            }
+            windowManager.updateViewLayout(view, params)
+            if (focusable) view.requestFocus()
+        } catch (error: RuntimeException) {
+            logger.error("EDGE could not change panel focus.", error)
+        }
+    }
+
+    fun withPanelFocus(block: () -> Unit) {
+        val params = panelParams ?: return
+        val view = panelView ?: return
+        val previous = params.flags
+        params.flags = previous and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        windowManager.updateViewLayout(view, params)
+        view.requestFocus()
+        try {
+            block()
+        } finally {
+            params.flags = previous
+            try {
+                windowManager.updateViewLayout(view, params)
+            } catch (error: RuntimeException) {
+                logger.error("EDGE could not restore the panel flags.", error)
+            }
+        }
+    }
+
     fun attachHandle() {
         runWindow {
+            if (!look.handleVisible) return@runWindow
             if (handleView != null) {
                 applyPosition()
                 return@runWindow
@@ -108,12 +193,13 @@ class OverlayWindows(
             logFrame()
             val size = handleSize()
             val params = baseParams(size.first, size.second, watchOutside = false).also {
-                it.alpha = EdgeTokens.handleAlpha
+                it.alpha = look.handleAlpha
             }
             placeHandle(params, docked = false)
             val view = composeView(context.getString(R.string.handle_description)) {
                 val edge by session.state.collectAsStateWithLifecycle()
-                EdgeTheme { EdgeHandleFace(edge.edge) }
+                val style by preferences.preferences.collectAsStateWithLifecycle(initialValue = look)
+                EdgeHandleFace(edge.edge, style.skin)
             }
             view.setOnTouchListener(touchBinder)
             view.setOnApplyWindowInsetsListener { _, insets ->
@@ -263,19 +349,32 @@ class OverlayWindows(
 
     private fun ensurePanel() {
         if (panelView != null) return
-        val width = PanelGeometry.widthPx(dp(EdgeTokens.panelWidthDp), frame, handleWidth())
+        val width = PanelGeometry.widthPx(dp(look.panelWidthDp), frame, handleWidth())
         val height = PanelGeometry.heightPx(frame)
         val params = baseParams(width, height, watchOutside = true)
         params.x = PanelGeometry.offscreenX(session.state.value.edge, frame, width)
         params.y = PanelGeometry.topPx(frame)
         val view = composeView(contentDescription = null) {
             val uiState = session.state.collectAsStateWithLifecycle()
-            EdgeTheme {
-                EdgePanelContent(
-                    edge = uiState.value.edge,
-                    onClose = { onTap(true) },
-                )
-            }
+            val style by preferences.preferences.collectAsStateWithLifecycle(initialValue = look)
+            val status by clipboard.status.collectAsStateWithLifecycle()
+            var loaded by remember { mutableStateOf(emptyList<LaunchableApp>()) }
+            val torch by shortcuts.torchOn.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { loaded = apps.load() }
+            EdgePanelContent(
+                edge = uiState.value.edge,
+                look = style,
+                apps = loaded,
+                clipboardStatus = status,
+                torchOn = torch,
+                onClose = { onTap(true) },
+                onScratch = onScratch,
+                onScratchFocus = ::setPanelFocusable,
+                onCopyScratch = onCopyScratch,
+                onReadClipboard = onReadClipboard,
+                onShortcut = onShortcut,
+                onLaunchApp = onLaunchApp,
+            )
         }
         view.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_OUTSIDE) {
@@ -299,7 +398,7 @@ class OverlayWindows(
         ensurePanel()
         val params = panelParams ?: return
         val view = panelView ?: return
-        params.width = PanelGeometry.widthPx(dp(EdgeTokens.panelWidthDp), frame, handleWidth())
+        params.width = PanelGeometry.widthPx(dp(look.panelWidthDp), frame, handleWidth())
         params.height = PanelGeometry.heightPx(frame)
         params.y = PanelGeometry.topPx(frame)
         params.x = PanelGeometry.restX(session.state.value.edge, frame, params.width)
@@ -329,7 +428,7 @@ class OverlayWindows(
         val range = HandleGeometry.verticalRange(frame, height)
         params.y = HandleGeometry.topForFraction(session.state.value.handleYFraction, range)
         params.x = if (docked) {
-            val panelWidth = panelParams?.width ?: PanelGeometry.widthPx(dp(EdgeTokens.panelWidthDp), frame, width)
+            val panelWidth = panelParams?.width ?: PanelGeometry.widthPx(dp(look.panelWidthDp), frame, width)
             val panelX = panelParams?.x ?: PanelGeometry.restX(edge, frame, panelWidth)
             PanelGeometry.dockedHandleX(edge, panelX, panelWidth, width)
         } else {
@@ -435,7 +534,7 @@ class OverlayWindows(
 
     private fun handleWidth(): Int = dp(EdgeTokens.handleWidthDp).coerceAtLeast(1)
 
-    private fun handleHeight(): Int = dp(EdgeTokens.handleHeightDp).coerceAtLeast(1)
+    private fun handleHeight(): Int = dp(look.handleHeightDp).coerceAtLeast(1)
 
     private fun dp(value: Int): Int = (value * frame.density).roundToInt()
 

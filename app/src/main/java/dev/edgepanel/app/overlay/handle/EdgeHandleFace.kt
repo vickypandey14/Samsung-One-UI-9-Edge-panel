@@ -13,15 +13,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import dev.edgepanel.app.core.designsystem.EdgePalette
 import dev.edgepanel.app.core.designsystem.EdgeTokens
+import dev.edgepanel.app.core.designsystem.handleColors
 import dev.edgepanel.app.domain.EdgeSide
+import dev.edgepanel.app.domain.EdgeSkin
 
 @Composable
-fun EdgeHandleFace(edge: EdgeSide) {
+fun EdgeHandleFace(
+    edge: EdgeSide,
+    skin: EdgeSkin,
+) {
     val shape = RoundedCornerShape(EdgeTokens.handleCornerDp.dp)
-    val color = if (isSystemInDarkTheme()) EdgePalette.handleDark else EdgePalette.handleLight
-    val stroke = if (isSystemInDarkTheme()) EdgePalette.handleStrokeDark else EdgePalette.handleStrokeLight
+    val (color, stroke) = handleColors(skin, isSystemInDarkTheme())
     val alignment = if (edge == EdgeSide.Left) Alignment.CenterStart else Alignment.CenterEnd
     Box(
         modifier = Modifier.fillMaxSize(),

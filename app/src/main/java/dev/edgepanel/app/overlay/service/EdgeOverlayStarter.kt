@@ -20,6 +20,13 @@ class EdgeOverlayStarter @Inject constructor(
         return true
     }
 
+    fun open(): Boolean {
+        if (!permissions.canDrawOverlays()) return false
+        val intent = Intent(context, EdgeOverlayService::class.java).setAction(EdgeOverlayService.ACTION_OPEN)
+        ContextCompat.startForegroundService(context, intent)
+        return true
+    }
+
     fun stop() {
         val intent = Intent(context, EdgeOverlayService::class.java).setAction(EdgeOverlayService.ACTION_STOP)
         context.startService(intent)
