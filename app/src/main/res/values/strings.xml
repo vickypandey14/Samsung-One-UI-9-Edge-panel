@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EDGE</string>
+    <string name="edge_service_label">EDGE overlay</string>
+    <string name="notification_channel_name">EDGE</string>
+    <string name="notification_channel_description">Shown while EDGE is drawing over other apps.</string>
+    <string name="notification_title">EDGE is active</string>
+    <string name="notification_text">The edge handle is available over other apps.</string>
+    <string name="notification_stop">Stop EDGE</string>
+    <string name="handle_description">EDGE handle. Double-tap to open the panel. Drag up or down to move it.</string>
+    <string name="permission_revoked">Overlay permission was revoked. Turn it back on to use EDGE.</string>
+    <string name="window_failed">EDGE couldn\'t keep the overlay on screen.</string>
+    <string name="cd_close_panel">Close panel</string>
+</resources>

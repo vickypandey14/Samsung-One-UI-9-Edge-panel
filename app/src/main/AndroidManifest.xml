@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".EdgeApplication"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Edge">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          specialUse is the foreground-service type because EDGE only draws a
+          user-invoked TYPE_APPLICATION_OVERLAY. It does not match camera,
+          microphone, location, mediaPlayback, phoneCall, dataSync, or
+          connectedDevice. The subtype below is the truthful description of
+          that work. See docs/PERMISSIONS.md.
+        -->
+        <service
+            android:name=".overlay.service.EdgeOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-invoked floating edge panel drawn with TYPE_APPLICATION_OVERLAY. It stays visible over other apps until the user stops EDGE. It does not use camera, microphone, location, media playback, data sync, phone calls, or connected devices." />
+        </service>
+    </application>
+</manifest>
