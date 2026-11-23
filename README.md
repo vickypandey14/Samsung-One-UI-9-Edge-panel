@@ -4,7 +4,7 @@ Independent, open-source edge panel for Android. This repository is the first fo
 
 Package: `dev.edgepanel.app`
 
-Primary device target: Samsung Galaxy A35 5G (SM-A356E), One UI 9.0 / Android 17 (API 37).
+For One UI 9.0 on Android 17 (API 37), and later One UI versions that keep the same overlay rules.
 
 ## Requirements
 

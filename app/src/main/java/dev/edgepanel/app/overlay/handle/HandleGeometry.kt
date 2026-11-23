@@ -42,7 +42,7 @@ object HandleGeometry {
     /**
      * Visible pill position. The pill sits just inside the side gesture
      * inset so a tap is delivered to this overlay instead of the system
-     * back gesture or Samsung's edge grab. Clearance is capped so a very
+     * back gesture or the One UI edge grab. Clearance is capped so a very
      * large inset cannot park the handle in the middle of the screen.
      * A cutout can push it further inward.
      */
