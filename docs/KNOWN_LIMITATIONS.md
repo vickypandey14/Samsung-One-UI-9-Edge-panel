@@ -1,7 +1,7 @@
 # Known limitations
 
 - No boot receiver. After reboot, or after the process is killed, the user starts EDGE again from the app. The service returns `START_NOT_STICKY` on purpose.
-- The visible handle is still 7 by 68dp, but it sits 20 to 48dp in from the physical edge and the touch window is 48dp wide. On One UI, a pill glued to the bezel is consumed by the system back gesture and by the system edge grab, so the tap never arrives. The rest of the edge is left to the system.
+- The visible handle is still 7 by 68dp, but it sits 48 to 72dp in from the physical edge and the touch window is 56dp wide. On One UI, a pill glued to the bezel is consumed by the system back gesture and by the system edge grab, so the tap never arrives. The rest of the edge is left to the system.
 - The panel is not focusable, so the system Back gesture and the Back key are not captured to close it. Close the panel with the button, the handle, or a tap outside it.
 - The outside tap is delivered to the app underneath as well as to EDGE. That is what `FLAG_NOT_TOUCH_MODAL` plus `FLAG_WATCH_OUTSIDE_TOUCH` do. The first outside tap dismisses the panel and can also activate whatever was under the finger.
 - Elevation shadows are clipped by the overlay window. The panel uses a solid surface and the handle uses a hairline, instead of a larger invisible window just to show a shadow.

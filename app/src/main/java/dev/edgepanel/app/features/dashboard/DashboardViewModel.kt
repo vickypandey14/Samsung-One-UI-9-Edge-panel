@@ -113,6 +113,8 @@ class DashboardViewModel @Inject constructor(
 
     fun setShowApps(show: Boolean) = edit { preferences.setShowApps(show) }
 
+    fun setShortcutIconsOnly(iconsOnly: Boolean) = edit { preferences.setShortcutIconsOnly(iconsOnly) }
+
     fun setShortcutEnabled(name: String, enabled: Boolean) = edit {
         preferences.setShortcutEnabled(name, enabled)
     }

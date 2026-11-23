@@ -87,7 +87,7 @@ class GestureTracker(private val config: GestureConfig) {
         val dx = x - downX
         val dy = y - downY
         val inward = inwardOpen(dx, dy)
-        val tap = !consumedSwipe && !isDragging && !longPressFired && !inward &&
+        val tap = !consumedSwipe && !isDragging && !inward &&
             abs(dy) < config.touchSlopPx &&
             abs(dx) < config.swipeThresholdPx
         tracking = false
@@ -103,7 +103,7 @@ class GestureTracker(private val config: GestureConfig) {
         val dx = lastX - downX
         val dy = lastY - downY
         val inward = tracking && inwardOpen(dx, dy)
-        val open = tracking && !consumedSwipe && !isDragging && !longPressFired && !inward
+        val open = tracking && !consumedSwipe && !isDragging && !inward
         tracking = false
         isDragging = false
         consumedSwipe = false
@@ -115,7 +115,7 @@ class GestureTracker(private val config: GestureConfig) {
     }
 
     private fun inwardOpen(dx: Float, dy: Float): Boolean {
-        return !consumedSwipe && !longPressFired &&
+        return !consumedSwipe &&
             config.isInward(dx) &&
             abs(dx) >= config.touchSlopPx &&
             abs(dx) >= abs(dy)

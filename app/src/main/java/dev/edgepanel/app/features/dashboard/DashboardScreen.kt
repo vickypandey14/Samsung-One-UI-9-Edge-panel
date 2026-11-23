@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -68,6 +70,8 @@ import dev.edgepanel.app.core.datastore.MIN_ALPHA
 import dev.edgepanel.app.core.datastore.MIN_GLASS
 import dev.edgepanel.app.core.datastore.MIN_HANDLE_HEIGHT
 import dev.edgepanel.app.core.datastore.MIN_PANEL_WIDTH
+import dev.edgepanel.app.core.designsystem.EdgeSymbol
+import dev.edgepanel.app.core.designsystem.EdgeSymbolIcon
 import dev.edgepanel.app.core.permissions.launchOverlaySettings
 import dev.edgepanel.app.domain.EdgeSide
 import dev.edgepanel.app.domain.EdgeSkin
@@ -78,11 +82,11 @@ import dev.edgepanel.app.features.apps.LaunchableApp
 import dev.edgepanel.app.features.shortcuts.EdgeShortcut
 import dev.edgepanel.app.features.shortcuts.panelLabel
 
-private enum class DashTab(val label: String) {
-    Home("Home"),
-    Visibility("Look"),
-    Style("Style"),
-    Apps("Apps"),
+private enum class DashTab(val label: String, val symbol: EdgeSymbol) {
+    Home("Home", EdgeSymbol.Home),
+    Visibility("Look", EdgeSymbol.Look),
+    Style("Style", EdgeSymbol.Style),
+    Apps("Apps", EdgeSymbol.Apps),
 }
 
 private val EdgeBlue = Color(0xFF2F6FE4)
@@ -191,7 +195,7 @@ fun DashboardRoute(
                         ChoiceButton("Left", prefs.edge == EdgeSide.Left) { viewModel.selectEdge(EdgeSide.Left) }
                     }
                     Text(
-                        text = "Swipe the handle inward to open the panel.",
+                        text = "Tap the handle, or swipe it inward, to open the panel.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -289,6 +293,16 @@ fun DashboardRoute(
                     SwitchRow("Apps", prefs.showApps, viewModel::setShowApps)
                 }
                 SettingsCard("Shortcuts in the panel") {
+                    SwitchRow(
+                        label = "Icons only",
+                        checked = prefs.shortcutIconsOnly,
+                        onCheckedChange = viewModel::setShortcutIconsOnly,
+                    )
+                    Text(
+                        text = "Show shortcut icons without their names.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     EdgeShortcut.entries.forEach { shortcut ->
                         SwitchRow(
                             label = shortcut.panelLabel(),
@@ -423,25 +437,35 @@ private fun FloatingEdgeBar(
             modifier = Modifier
                 .offset(x = offset)
                 .width(tabWidth)
-                .height(46.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .height(58.dp)
+                .clip(RoundedCornerShape(24.dp))
                 .background(EdgeBlue),
         )
         Row(modifier = Modifier.fillMaxWidth()) {
             DashTab.entries.forEach { tab ->
                 val interaction = remember(tab) { MutableInteractionSource() }
+                val color = if (tab == selected) Color.White else MaterialTheme.colorScheme.onSurface
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .height(58.dp)
                         .clickable(interaction, indication = null) { onSelect(tab) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = tab.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (tab == selected) Color.White else MaterialTheme.colorScheme.onSurface,
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        EdgeSymbolIcon(
+                            symbol = tab.symbol,
+                            tint = color,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = tab.label,
+                            color = color,
+                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
         }

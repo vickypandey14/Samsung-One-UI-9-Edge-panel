@@ -116,6 +116,10 @@ class EdgePreferencesRepository @Inject constructor(
         store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.showApps] = show }
     }
 
+    suspend fun setShortcutIconsOnly(iconsOnly: Boolean) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.shortcutIconsOnly] = iconsOnly }
+    }
+
     suspend fun setShortcutEnabled(name: String, enabled: Boolean) {
         store.dataStore.edit { prefs ->
             val current = prefs[EdgePreferenceKeys.disabledShortcuts].orEmpty().toMutableSet()

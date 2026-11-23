@@ -65,11 +65,11 @@ class GestureTrackerTest {
     }
 
     @Test
-    fun longPressDoesNotAlsoCountAsATap() {
+    fun holdingStillStillOpensWhenTheFingerLifts() {
         val tracker = tracker(EdgeSide.Right)
         tracker.onDown(20f, 20f, 0L)
         assertEquals(listOf(GestureSignal.LongPress), tracker.onLongPressTimeout(400L))
-        assertTrue(tracker.onUp(22f, 21f, 450L).isEmpty())
+        assertEquals(listOf(GestureSignal.Tap), tracker.onUp(22f, 21f, 450L))
     }
 
     @Test

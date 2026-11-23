@@ -1,20 +1,27 @@
 package dev.edgepanel.app.overlay.panel
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -26,16 +33,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.border
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.edgepanel.app.R
 import dev.edgepanel.app.core.datastore.EdgePreferences
+import dev.edgepanel.app.core.designsystem.EdgeSymbolIcon
 import dev.edgepanel.app.core.designsystem.EdgeTokens
 import dev.edgepanel.app.core.designsystem.edgeColorScheme
+import dev.edgepanel.app.core.designsystem.symbol
 import dev.edgepanel.app.domain.EdgeQuips
 import dev.edgepanel.app.domain.EdgeSide
 import dev.edgepanel.app.features.apps.AppGlyph
@@ -43,6 +55,7 @@ import dev.edgepanel.app.features.apps.LaunchableApp
 import dev.edgepanel.app.features.shortcuts.EdgeShortcut
 import dev.edgepanel.app.features.shortcuts.panelLabel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EdgePanelContent(
     edge: EdgeSide,
@@ -111,15 +124,17 @@ fun EdgePanelContent(
                 val shortcuts = EdgeShortcut.entries.filter { it.name !in look.disabledShortcuts }
                 if (shortcuts.isNotEmpty()) {
                     SectionTitle("Shortcuts")
-                    shortcuts.chunked(2).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            row.forEach { shortcut ->
-                                OutlinedButton(
-                                    onClick = { onShortcut(shortcut) },
-                                    modifier = Modifier.weight(1f),
-                                ) { Text(shortcut.panelLabel(torchOn)) }
-                            }
-                            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        shortcuts.forEach { shortcut ->
+                            ShortcutTile(
+                                label = shortcut.panelLabel(torchOn),
+                                iconsOnly = look.shortcutIconsOnly,
+                                onClick = { onShortcut(shortcut) },
+                                icon = { EdgeSymbolIcon(shortcut.symbol(), tint = MaterialTheme.colorScheme.primary) },
+                            )
                         }
                     }
                 }
@@ -191,6 +206,44 @@ fun EdgePanelContent(
                 )
             }
             }
+        }
+    }
+}
+
+@Composable
+private fun ShortcutTile(
+    label: String,
+    iconsOnly: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(if (iconsOnly) 56.dp else 76.dp)
+            .semantics { if (iconsOnly) contentDescription = label }
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            icon()
+        }
+        if (!iconsOnly) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

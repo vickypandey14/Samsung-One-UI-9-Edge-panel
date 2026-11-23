@@ -57,25 +57,25 @@ class HandleGeometryTest {
 
     @Test
     fun handleSitsJustInsideTheSideGestureZone() {
-        assertEquals(980, HandleGeometry.restX(EdgeSide.Right, frame, handleWidthPx = 20))
-        assertEquals(80, HandleGeometry.restX(EdgeSide.Left, frame, handleWidthPx = 20))
-        val cutout = frame.copy(cutoutRightPx = 120, cutoutLeftPx = 100)
-        assertEquals(940, HandleGeometry.restX(EdgeSide.Right, cutout, handleWidthPx = 20))
-        assertEquals(100, HandleGeometry.restX(EdgeSide.Left, cutout, handleWidthPx = 20))
+        assertEquals(916, HandleGeometry.restX(EdgeSide.Right, frame, handleWidthPx = 20))
+        assertEquals(144, HandleGeometry.restX(EdgeSide.Left, frame, handleWidthPx = 20))
+        val cutout = frame.copy(cutoutRightPx = 160, cutoutLeftPx = 160)
+        assertEquals(900, HandleGeometry.restX(EdgeSide.Right, cutout, handleWidthPx = 20))
+        assertEquals(160, HandleGeometry.restX(EdgeSide.Left, cutout, handleWidthPx = 20))
     }
 
     @Test
     fun missingGestureInsetStillClearsTheEdgeGrab() {
         val flush = frame.copy(gestureLeftPx = 0, gestureRightPx = 0)
-        assertEquals(60, HandleGeometry.restX(EdgeSide.Left, flush, handleWidthPx = 20))
-        assertEquals(1000, HandleGeometry.restX(EdgeSide.Right, flush, handleWidthPx = 20))
+        assertEquals(144, HandleGeometry.restX(EdgeSide.Left, flush, handleWidthPx = 20))
+        assertEquals(916, HandleGeometry.restX(EdgeSide.Right, flush, handleWidthPx = 20))
     }
 
     @Test
-    fun touchWindowStartsOnThePhysicalEdge() {
-        val touchWidth = HandleGeometry.touchWidthPx(visualWidthPx = 20, density = 3f, gestureInsetPx = 80)
-        assertEquals(164, touchWidth)
-        assertEquals(0, HandleGeometry.touchX(EdgeSide.Left, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
-        assertEquals(1080 - 164, HandleGeometry.touchX(EdgeSide.Right, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
+    fun touchWindowStartsInsideTheGestureZone() {
+        val touchWidth = HandleGeometry.touchWidthPx(visualWidthPx = 20, density = 3f)
+        assertEquals(168, touchWidth)
+        assertEquals(144, HandleGeometry.touchX(EdgeSide.Left, frame, touchWidthPx = touchWidth))
+        assertEquals(768, HandleGeometry.touchX(EdgeSide.Right, frame, touchWidthPx = touchWidth))
     }
 }

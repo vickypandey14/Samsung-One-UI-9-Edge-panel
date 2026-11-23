@@ -29,6 +29,7 @@ data class EdgePreferences(
     val showShortcuts: Boolean = true,
     val showClipboard: Boolean = true,
     val showApps: Boolean = true,
+    val shortcutIconsOnly: Boolean = false,
     val disabledShortcuts: Set<String> = emptySet(),
 )
 
@@ -52,6 +53,7 @@ internal object EdgePreferenceKeys {
     val showShortcuts = booleanPreferencesKey("show_shortcuts")
     val showClipboard = booleanPreferencesKey("show_clipboard")
     val showApps = booleanPreferencesKey("show_apps")
+    val shortcutIconsOnly = booleanPreferencesKey("shortcut_icons_only")
     val disabledShortcuts = stringSetPreferencesKey("disabled_shortcuts")
 }
 
@@ -109,6 +111,7 @@ fun readEdgePreferences(
         showShortcuts = prefs[EdgePreferenceKeys.showShortcuts] != false,
         showClipboard = prefs[EdgePreferenceKeys.showClipboard] != false,
         showApps = prefs[EdgePreferenceKeys.showApps] != false,
+        shortcutIconsOnly = prefs[EdgePreferenceKeys.shortcutIconsOnly] == true,
         disabledShortcuts = prefs[EdgePreferenceKeys.disabledShortcuts].orEmpty(),
     )
 }

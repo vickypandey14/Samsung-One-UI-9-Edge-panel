@@ -205,7 +205,19 @@ class OverlayWindows(
                 val style by preferences.preferences.collectAsStateWithLifecycle(initialValue = look)
                 EdgeHandleFace(edge.edge, style.skin)
             }
-            view.setOnTouchListener(touchBinder)
+            // A fully clear overlay is easy for One UI to skip. One nearly
+            // invisible pixel of background keeps the whole strip hittable.
+            view.setBackgroundColor(0x01000000)
+            view.isClickable = true
+            view.setOnTouchListener { touched, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN && touched.width > 0 && touched.height > 0) {
+                    ViewCompat.setSystemGestureExclusionRects(
+                        touched,
+                        listOf(Rect(0, 0, touched.width, touched.height)),
+                    )
+                }
+                touchBinder.onTouch(touched, event)
+            }
             view.setOnApplyWindowInsetsListener { _, insets ->
                 val updated = reader.fromViewInsets(frame, insets)
                 if (updated != frame) {
@@ -297,12 +309,21 @@ class OverlayWindows(
         }
         val handle = handleParams
         val handleView = this.handleView
-        val handleStart = handle?.x ?: 0
+        val edge = session.state.value.edge
+        val closedWidth = HandleGeometry.touchWidthPx(handleWidth(), frame.density)
+        val handleEndWidth = if (open) handleWidth() else closedWidth
         val handleEnd = if (open) {
-            PanelGeometry.dockedHandleX(session.state.value.edge, target, width, handleWidth())
+            PanelGeometry.dockedHandleX(edge, target, width, handleWidth())
         } else {
-            HandleGeometry.restX(session.state.value.edge, frame, handleWidth())
+            HandleGeometry.touchX(edge, frame, closedWidth)
         }
+        if (handle != null && handleView != null) {
+            val outer = if (edge == EdgeSide.Left) handle.x else handle.x + handle.width
+            handle.width = handleEndWidth
+            handle.x = if (edge == EdgeSide.Left) outer else outer - handleEndWidth
+            updateOrReport(handleView, handle)
+        }
+        val handleStart = handle?.x ?: 0
         val token = ++motionGeneration
         animator?.cancel()
         if (panel.x == target) {
@@ -443,15 +464,7 @@ class OverlayWindows(
         val edge = session.state.value.edge
         val width = handleWidth()
         val height = handleHeight()
-        val touchWidth = if (docked) {
-            width
-        } else {
-            HandleGeometry.touchWidthPx(
-                width,
-                frame.density,
-                if (edge == EdgeSide.Left) frame.gestureLeftPx else frame.gestureRightPx,
-            )
-        }
+        val touchWidth = if (docked) width else HandleGeometry.touchWidthPx(width, frame.density)
         params.width = touchWidth
         params.height = height
         val range = HandleGeometry.verticalRange(frame, height)
@@ -461,7 +474,7 @@ class OverlayWindows(
             val panelX = panelParams?.x ?: PanelGeometry.restX(edge, frame, panelWidth)
             PanelGeometry.dockedHandleX(edge, panelX, panelWidth, width)
         } else {
-            HandleGeometry.touchX(edge, frame, width, touchWidth)
+            HandleGeometry.touchX(edge, frame, touchWidth)
         }
         handleView?.let { excludeSystemGestures(it) }
     }
@@ -586,7 +599,7 @@ class OverlayWindows(
             "Display ${frame.widthPx}x${frame.heightPx} density ${frame.density} " +
                 "gesture L${frame.gestureLeftPx} R${frame.gestureRightPx} " +
                 "T${frame.gestureTopPx} B${frame.gestureBottomPx}. " +
-                "Handle touch area extends inward of the visible pill.",
+                "Handle touch area sits inside the side gesture inset.",
         )
     }
 
