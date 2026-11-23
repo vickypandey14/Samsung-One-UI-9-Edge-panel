@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.border
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
@@ -41,8 +41,8 @@ import dev.edgepanel.app.domain.EdgeSide
 import dev.edgepanel.app.features.apps.AppGlyph
 import dev.edgepanel.app.features.apps.LaunchableApp
 import dev.edgepanel.app.features.shortcuts.EdgeShortcut
+import dev.edgepanel.app.features.shortcuts.panelLabel
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EdgePanelContent(
     edge: EdgeSide,
@@ -69,14 +69,17 @@ fun EdgePanelContent(
     LaunchedEffect(look.scratch) {
         if (scratch != look.scratch) scratch = look.scratch
     }
+    val glass = if (look.panelSolid) 1f else look.panelGlass
     MaterialTheme(colorScheme = edgeColorScheme(look.skin, isSystemInDarkTheme())) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = glass))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), shape)
                 .verticalScroll(rememberScrollState())
-                .padding(EdgeTokens.contentPaddingDp.dp),
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -104,16 +107,24 @@ fun EdgePanelContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            SectionTitle("Shortcuts")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ShortcutButton(if (torchOn) "Light off" else "Light") { onShortcut(EdgeShortcut.Torch) }
-                ShortcutButton("Wi-Fi") { onShortcut(EdgeShortcut.Wifi) }
-                ShortcutButton("Bluetooth") { onShortcut(EdgeShortcut.Bluetooth) }
-                ShortcutButton("Display") { onShortcut(EdgeShortcut.Display) }
-                ShortcutButton("Sound") { onShortcut(EdgeShortcut.Sound) }
+            if (look.showShortcuts) {
+                val shortcuts = EdgeShortcut.entries.filter { it.name !in look.disabledShortcuts }
+                if (shortcuts.isNotEmpty()) {
+                    SectionTitle("Shortcuts")
+                    shortcuts.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            row.forEach { shortcut ->
+                                OutlinedButton(
+                                    onClick = { onShortcut(shortcut) },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text(shortcut.panelLabel(torchOn)) }
+                            }
+                            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(18.dp))
+            if (look.showClipboard) {
             SectionTitle("Clipboard")
             OutlinedTextField(
                 value = scratch,
@@ -126,6 +137,15 @@ fun EdgePanelContent(
                     .onFocusChanged { onScratchFocus(it.isFocused) },
                 label = { Text("Note") },
                 minLines = 2,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                ),
             )
             Row {
                 TextButton(onClick = onCopyScratch) { Text("Copy") }
@@ -138,7 +158,8 @@ fun EdgePanelContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            }
+            if (look.showApps) {
             SectionTitle(if (pinned.isNotEmpty()) "Pinned apps" else "Apps")
             if (shownApps.isEmpty()) {
                 Text(
@@ -169,6 +190,7 @@ fun EdgePanelContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            }
         }
     }
 }
@@ -183,10 +205,3 @@ private fun SectionTitle(text: String) {
     Spacer(modifier = Modifier.height(8.dp))
 }
 
-@Composable
-private fun ShortcutButton(
-    label: String,
-    onClick: () -> Unit,
-) {
-    OutlinedButton(onClick = onClick) { Text(label) }
-}

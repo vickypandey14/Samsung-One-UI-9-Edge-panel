@@ -101,6 +101,22 @@ class DashboardViewModel @Inject constructor(
 
     fun setShowQuips(show: Boolean) = edit { preferences.setShowQuips(show) }
 
+    fun setPanelSolid(solid: Boolean) = edit { preferences.setPanelSolid(solid) }
+
+    fun setPanelGlass(glass: Float) = edit { preferences.setPanelGlass(glass) }
+
+    fun setPanelBlur(blurDp: Int) = edit { preferences.setPanelBlurDp(blurDp) }
+
+    fun setShowShortcuts(show: Boolean) = edit { preferences.setShowShortcuts(show) }
+
+    fun setShowClipboard(show: Boolean) = edit { preferences.setShowClipboard(show) }
+
+    fun setShowApps(show: Boolean) = edit { preferences.setShowApps(show) }
+
+    fun setShortcutEnabled(name: String, enabled: Boolean) = edit {
+        preferences.setShortcutEnabled(name, enabled)
+    }
+
     fun setScratch(scratch: String) = edit { preferences.setScratch(scratch) }
 
     fun resetBoops() = edit { preferences.resetBoops() }

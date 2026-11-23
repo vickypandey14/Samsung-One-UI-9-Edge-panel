@@ -36,7 +36,7 @@ class GestureTrackerTest {
         val tracker = tracker(EdgeSide.Right)
         tracker.onDown(400f, 200f, 0L)
         assertTrue(tracker.onMove(380f, 202f, 30L).isEmpty())
-        assertEquals(listOf(GestureSignal.Tap), tracker.onUp(380f, 202f, 60L))
+        assertEquals(listOf(GestureSignal.InwardSwipe), tracker.onUp(380f, 202f, 60L))
     }
 
     @Test

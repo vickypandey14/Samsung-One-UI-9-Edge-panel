@@ -92,7 +92,7 @@ class OverlayWindows(
 
     init {
         val slop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-        val swipe = dp(EdgeTokens.swipeThresholdDp).toFloat()
+        val swipe = dp(OPEN_SWIPE_DP).toFloat()
         touchBinder = HandleTouchBinder(
             callbacks = HandleTouchCallbacks(
                 panelWasOpenAtDown = { session.state.value.panelPhase != PanelPhase.Closed },
@@ -120,12 +120,16 @@ class OverlayWindows(
     fun updateLook(prefs: EdgePreferences) {
         val previous = look
         look = prefs
+        val glass = previous.panelSolid != prefs.panelSolid ||
+            previous.panelBlurDp != prefs.panelBlurDp
         val visual = previous.handleVisible != prefs.handleVisible ||
             previous.handleAlpha != prefs.handleAlpha ||
             previous.handleHeightDp != prefs.handleHeightDp ||
             previous.panelWidthDp != prefs.panelWidthDp
-        if (!visual) return
+        if (!visual && !glass) return
         runWindow {
+            if (glass) applyPanelGlass()
+            if (!visual) return@runWindow
             val active = session.state.value.servicePhase == dev.edgepanel.app.domain.ServicePhase.Active
             if (!active) return@runWindow
             if (prefs.handleVisible && handleView == null) {
@@ -391,6 +395,27 @@ class OverlayWindows(
         windowManager.addView(view, params)
         panelView = view
         panelParams = params
+        applyPanelGlass()
+    }
+
+    private fun applyPanelGlass() {
+        val params = panelParams ?: return
+        val view = panelView ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val blur = if (look.panelSolid) 0 else dp(look.panelBlurDp)
+                if (blur > 0) {
+                    params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+                    params.blurBehindRadius = blur
+                } else {
+                    params.flags = params.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
+                    params.blurBehindRadius = 0
+                }
+            }
+            windowManager.updateViewLayout(view, params)
+        } catch (error: RuntimeException) {
+            logger.error("EDGE could not update the panel glass.", error)
+        }
     }
 
     private fun layoutPanel(animated: Boolean, open: Boolean, settleOpen: Boolean = false) {
@@ -421,7 +446,11 @@ class OverlayWindows(
         val touchWidth = if (docked) {
             width
         } else {
-            HandleGeometry.touchWidthPx(width, frame.density)
+            HandleGeometry.touchWidthPx(
+                width,
+                frame.density,
+                if (edge == EdgeSide.Left) frame.gestureLeftPx else frame.gestureRightPx,
+            )
         }
         params.width = touchWidth
         params.height = height
@@ -462,7 +491,16 @@ class OverlayWindows(
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
-            if (watchOutside) WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH else 0
+            if (watchOutside) {
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+                    } else {
+                        0
+                    }
+            } else {
+                0
+            }
         return WindowManager.LayoutParams(
             width,
             height,
@@ -474,6 +512,9 @@ class OverlayWindows(
             windowAnimations = 0
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            if (watchOutside && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                blurBehindRadius = (28f * frame.density).roundToInt().coerceAtLeast(1)
             }
         }
     }
@@ -526,7 +567,7 @@ class OverlayWindows(
         touchBinder.updateConfig(
             edge = session.state.value.edge,
             touchSlopPx = slop,
-            swipeThresholdPx = dp(EdgeTokens.swipeThresholdDp).toFloat(),
+            swipeThresholdPx = dp(OPEN_SWIPE_DP).toFloat(),
         )
     }
 
@@ -576,6 +617,7 @@ class OverlayWindows(
 
     private companion object {
         const val OUTSIDE_GRACE_MS = 450L
+        const val OPEN_SWIPE_DP = 18
     }
 
     private fun report(error: Throwable) {

@@ -8,6 +8,6 @@
 - One UI may hide overlays on the secure lock screen and show them again after unlock. That is platform behavior. EDGE does not request show-when-locked.
 - One UI battery management can stop a foreground service. EDGE does not request an ignore-battery-optimization exemption. If the handle disappears while the phone is idle, check One UI's battery settings for EDGE.
 - API 29 has a coarser inset fallback when `WindowMetrics` is unavailable. One UI 9 runs on API 37 and uses `WindowMetrics` plus the view's applied insets.
-- The panel can open Wi-Fi, Bluetooth, display, and sound settings, toggle the flashlight when the device exposes one, keep a note, and launch apps that publish a launcher icon. It does not read notifications, messages, or private app data. One UI only gives clipboard contents to the focused app, so Read focuses the panel for that moment and may still come back empty.
+- The panel can open Wi-Fi, Bluetooth, display, and sound settings, toggle the flashlight when the device exposes one, keep a note, and launch apps that publish a launcher icon. It does not read notifications, messages, or private app data. One UI only gives clipboard contents to a focused app, so Read opens a brief focused screen, copies the text into the note, and closes. An empty clipboard stays empty.
 - There is no license file yet.
 - On-device results are recorded in [DEVICE_TESTING.md](DEVICE_TESTING.md). Anything not marked there is still untested on a phone.

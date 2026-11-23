@@ -72,10 +72,10 @@ class HandleGeometryTest {
     }
 
     @Test
-    fun touchWindowExtendsInwardFromThePill() {
-        val touchWidth = HandleGeometry.touchWidthPx(visualWidthPx = 20, density = 3f)
-        assertEquals(144, touchWidth)
-        assertEquals(80, HandleGeometry.touchX(EdgeSide.Left, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
-        assertEquals(980 + 20 - 144, HandleGeometry.touchX(EdgeSide.Right, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
+    fun touchWindowStartsOnThePhysicalEdge() {
+        val touchWidth = HandleGeometry.touchWidthPx(visualWidthPx = 20, density = 3f, gestureInsetPx = 80)
+        assertEquals(164, touchWidth)
+        assertEquals(0, HandleGeometry.touchX(EdgeSide.Left, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
+        assertEquals(1080 - 164, HandleGeometry.touchX(EdgeSide.Right, frame, visualWidthPx = 20, touchWidthPx = touchWidth))
     }
 }

@@ -16,7 +16,9 @@ import dev.edgepanel.app.core.common.EdgeLogger
 import dev.edgepanel.app.core.datastore.EdgePreferences
 import dev.edgepanel.app.core.datastore.EdgePreferencesRepository
 import dev.edgepanel.app.core.permissions.OverlayPermissionDataSource
+import dev.edgepanel.app.domain.EdgeSide
 import dev.edgepanel.app.domain.OverlayEffect
+import dev.edgepanel.app.features.clipboard.ClipboardReadActivity
 import dev.edgepanel.app.features.apps.LaunchableApp
 import dev.edgepanel.app.features.apps.LaunchableAppCatalog
 import dev.edgepanel.app.features.clipboard.EdgeClipboard
@@ -249,22 +251,21 @@ class EdgeOverlayService : Service() {
     }
 
     private fun onReadClipboard() {
-        windows.withPanelFocus {
-            val text = clipboard.read()
-            scope.launch {
-                if (text == null) {
-                    clipboard.report("One UI didn't share the clipboard. Focus the note and try Read again.")
-                } else {
-                    preferences.setScratch(text)
-                    clipboard.report("Clipboard replaced the note.")
-                }
-            }
-        }
+        val intent = android.content.Intent(this, ClipboardReadActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
     private fun onShortcut(shortcut: EdgeShortcut) {
         if (shortcut == EdgeShortcut.Torch) {
             shortcuts.toggleTorch()
+            return
+        }
+        if (shortcut == EdgeShortcut.Flip) {
+            scope.launch {
+                val edge = preferences.preferences.first().edge
+                preferences.setEdge(if (edge == EdgeSide.Left) EdgeSide.Right else EdgeSide.Left)
+            }
             return
         }
         val intent = shortcuts.settingsIntent(shortcut) ?: return

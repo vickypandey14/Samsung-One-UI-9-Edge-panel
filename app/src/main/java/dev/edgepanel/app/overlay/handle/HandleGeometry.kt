@@ -61,16 +61,21 @@ object HandleGeometry {
      * Closed-handle window. Wider than the pill and extended inward, so a
      * finger can land on it. The pill stays on the outer side of this window.
      */
-    fun touchWidthPx(visualWidthPx: Int, density: Float): Int {
+    fun touchWidthPx(visualWidthPx: Int, density: Float, gestureInsetPx: Int = 0): Int {
         val finger = (TOUCH_WIDTH_DP * density).roundToInt()
-        return maxOf(visualWidthPx, finger)
+        val cover = gestureInsetPx.coerceAtLeast(0) + (28f * density).roundToInt()
+        return maxOf(visualWidthPx, finger, cover)
     }
 
+    /**
+     * The closed handle's window starts on the physical edge so an inward
+     * swipe can begin there. It is wider than the pill and reaches past the
+     * gesture inset.
+     */
     fun touchX(edge: EdgeSide, frame: DisplayFrame, visualWidthPx: Int, touchWidthPx: Int): Int {
-        val visualX = restX(edge, frame, visualWidthPx)
         return when (edge) {
-            EdgeSide.Left -> visualX
-            EdgeSide.Right -> visualX + visualWidthPx - touchWidthPx
+            EdgeSide.Left -> frame.cutoutLeftPx.coerceAtLeast(0)
+            EdgeSide.Right -> (frame.widthPx - touchWidthPx - frame.cutoutRightPx).coerceAtLeast(0)
         }
     }
 

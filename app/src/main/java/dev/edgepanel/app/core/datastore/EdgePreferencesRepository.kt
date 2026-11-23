@@ -91,6 +91,39 @@ class EdgePreferencesRepository @Inject constructor(
         store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.boops] = 0 }
     }
 
+    suspend fun setPanelSolid(solid: Boolean) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.panelSolid] = solid }
+    }
+
+    suspend fun setPanelGlass(glass: Float) {
+        val stored = if (glass.isFinite()) glass.coerceIn(MIN_GLASS, 1f) else DEFAULT_GLASS
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.panelGlass] = stored }
+    }
+
+    suspend fun setPanelBlurDp(blurDp: Int) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.panelBlur] = blurDp.coerceIn(0, MAX_BLUR) }
+    }
+
+    suspend fun setShowShortcuts(show: Boolean) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.showShortcuts] = show }
+    }
+
+    suspend fun setShowClipboard(show: Boolean) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.showClipboard] = show }
+    }
+
+    suspend fun setShowApps(show: Boolean) {
+        store.dataStore.edit { prefs -> prefs[EdgePreferenceKeys.showApps] = show }
+    }
+
+    suspend fun setShortcutEnabled(name: String, enabled: Boolean) {
+        store.dataStore.edit { prefs ->
+            val current = prefs[EdgePreferenceKeys.disabledShortcuts].orEmpty().toMutableSet()
+            if (enabled) current.remove(name) else current.add(name)
+            prefs[EdgePreferenceKeys.disabledShortcuts] = current
+        }
+    }
+
     suspend fun setAppPinned(component: String, pinned: Boolean) {
         if (!component.contains('/') || component.contains(' ')) return
         store.dataStore.edit { prefs ->

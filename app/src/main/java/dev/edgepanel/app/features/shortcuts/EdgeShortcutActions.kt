@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.os.Build
+import android.provider.AlarmClock
+import android.provider.MediaStore
 import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.edgepanel.app.core.common.EdgeLogger
@@ -19,6 +22,40 @@ enum class EdgeShortcut {
     Bluetooth,
     Display,
     Sound,
+    Location,
+    Battery,
+    Notifications,
+    Settings,
+    Clock,
+    Flip,
+    Airplane,
+    Data,
+    Wallpaper,
+    Camera,
+    Phone,
+    Messages,
+}
+
+fun EdgeShortcut.panelLabel(torchOn: Boolean = false): String {
+    return when (this) {
+        EdgeShortcut.Torch -> if (torchOn) "Light off" else "Light"
+        EdgeShortcut.Wifi -> "Wi-Fi"
+        EdgeShortcut.Bluetooth -> "Bluetooth"
+        EdgeShortcut.Display -> "Display"
+        EdgeShortcut.Sound -> "Sound"
+        EdgeShortcut.Location -> "Location"
+        EdgeShortcut.Battery -> "Battery"
+        EdgeShortcut.Notifications -> "Alerts"
+        EdgeShortcut.Settings -> "Settings"
+        EdgeShortcut.Clock -> "Clock"
+        EdgeShortcut.Flip -> "Flip edge"
+        EdgeShortcut.Airplane -> "Airplane"
+        EdgeShortcut.Data -> "Data use"
+        EdgeShortcut.Wallpaper -> "Wallpaper"
+        EdgeShortcut.Camera -> "Camera"
+        EdgeShortcut.Phone -> "Phone"
+        EdgeShortcut.Messages -> "Messages"
+    }
 }
 
 @Singleton
@@ -67,7 +104,25 @@ class EdgeShortcutActions @Inject constructor(
             EdgeShortcut.Bluetooth -> Settings.ACTION_BLUETOOTH_SETTINGS
             EdgeShortcut.Display -> Settings.ACTION_DISPLAY_SETTINGS
             EdgeShortcut.Sound -> Settings.ACTION_SOUND_SETTINGS
-            EdgeShortcut.Torch -> return null
+            EdgeShortcut.Location -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
+            EdgeShortcut.Battery -> Intent.ACTION_POWER_USAGE_SUMMARY
+            EdgeShortcut.Notifications -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS
+            } else {
+                "android.settings.NOTIFICATION_SETTINGS"
+            }
+            EdgeShortcut.Settings -> Settings.ACTION_SETTINGS
+            EdgeShortcut.Clock -> AlarmClock.ACTION_SHOW_ALARMS
+            EdgeShortcut.Airplane -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
+            EdgeShortcut.Data -> Settings.ACTION_DATA_USAGE_SETTINGS
+            EdgeShortcut.Wallpaper -> return Intent(Intent.ACTION_SET_WALLPAPER).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            EdgeShortcut.Camera -> return Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            EdgeShortcut.Phone -> return Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            EdgeShortcut.Messages -> return Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_APP_MESSAGING)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            EdgeShortcut.Torch, EdgeShortcut.Flip -> return null
         }
         return Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }

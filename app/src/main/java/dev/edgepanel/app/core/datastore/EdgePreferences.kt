@@ -23,6 +23,13 @@ data class EdgePreferences(
     val boops: Int = 0,
     val scratch: String = "",
     val pinnedApps: Set<String> = emptySet(),
+    val panelSolid: Boolean = false,
+    val panelGlass: Float = DEFAULT_GLASS,
+    val panelBlurDp: Int = DEFAULT_BLUR,
+    val showShortcuts: Boolean = true,
+    val showClipboard: Boolean = true,
+    val showApps: Boolean = true,
+    val disabledShortcuts: Set<String> = emptySet(),
 )
 
 internal object EdgePreferenceKeys {
@@ -39,6 +46,13 @@ internal object EdgePreferenceKeys {
     val boops = intPreferencesKey("boops")
     val scratch = stringPreferencesKey("scratch")
     val pinnedApps = stringSetPreferencesKey("pinned_apps")
+    val panelSolid = booleanPreferencesKey("panel_solid")
+    val panelGlass = floatPreferencesKey("panel_glass")
+    val panelBlur = intPreferencesKey("panel_blur_dp")
+    val showShortcuts = booleanPreferencesKey("show_shortcuts")
+    val showClipboard = booleanPreferencesKey("show_clipboard")
+    val showApps = booleanPreferencesKey("show_apps")
+    val disabledShortcuts = stringSetPreferencesKey("disabled_shortcuts")
 }
 
 fun readEdgePreferences(
@@ -86,6 +100,16 @@ fun readEdgePreferences(
         boops = (prefs[EdgePreferenceKeys.boops] ?: 0).coerceAtLeast(0),
         scratch = scratch,
         pinnedApps = pinned,
+        panelSolid = prefs[EdgePreferenceKeys.panelSolid] == true,
+        panelGlass = (prefs[EdgePreferenceKeys.panelGlass] ?: DEFAULT_GLASS)
+            .takeIf { it.isFinite() }
+            ?.coerceIn(MIN_GLASS, 1f)
+            ?: DEFAULT_GLASS,
+        panelBlurDp = (prefs[EdgePreferenceKeys.panelBlur] ?: DEFAULT_BLUR).coerceIn(0, MAX_BLUR),
+        showShortcuts = prefs[EdgePreferenceKeys.showShortcuts] != false,
+        showClipboard = prefs[EdgePreferenceKeys.showClipboard] != false,
+        showApps = prefs[EdgePreferenceKeys.showApps] != false,
+        disabledShortcuts = prefs[EdgePreferenceKeys.disabledShortcuts].orEmpty(),
     )
 }
 
@@ -104,3 +128,7 @@ internal const val DEFAULT_TITLE = "EDGE"
 internal const val MAX_TITLE = 24
 internal const val MAX_SCRATCH = 500
 internal const val MAX_PINS = 16
+internal const val DEFAULT_GLASS = 0.92f
+internal const val MIN_GLASS = 0.62f
+internal const val DEFAULT_BLUR = 24
+internal const val MAX_BLUR = 48

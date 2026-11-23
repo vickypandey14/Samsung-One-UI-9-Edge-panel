@@ -29,12 +29,14 @@ class GestureTracker(private val config: GestureConfig) {
     private var longPressFired: Boolean = false
     private var downX: Float = 0f
     private var downY: Float = 0f
+    private var lastX: Float = 0f
     private var lastY: Float = 0f
     private var tracking: Boolean = false
 
     fun onDown(x: Float, y: Float, timeMs: Long) {
         downX = x
         downY = y
+        lastX = x
         lastY = y
         tracking = true
         isDragging = false
@@ -60,7 +62,11 @@ class GestureTracker(private val config: GestureConfig) {
         } else if (longPressFired && !isDragging && ady >= config.touchSlopPx) {
             isDragging = true
         }
-        if (!isDragging) return emptyList()
+        lastX = x
+        if (!isDragging) {
+            lastY = y
+            return emptyList()
+        }
         val delta = y - lastY
         lastY = y
         return if (delta == 0f) emptyList() else listOf(GestureSignal.VerticalDrag(delta))
@@ -80,19 +86,38 @@ class GestureTracker(private val config: GestureConfig) {
         }
         val dx = x - downX
         val dy = y - downY
-        val tap = !consumedSwipe && !isDragging && !longPressFired &&
+        val inward = inwardOpen(dx, dy)
+        val tap = !consumedSwipe && !isDragging && !longPressFired && !inward &&
             abs(dy) < config.touchSlopPx &&
             abs(dx) < config.swipeThresholdPx
         tracking = false
         isDragging = false
-        return if (tap) listOf(GestureSignal.Tap) else emptyList()
+        return when {
+            inward -> listOf(GestureSignal.InwardSwipe)
+            tap -> listOf(GestureSignal.Tap)
+            else -> emptyList()
+        }
     }
 
     fun onCancel(): List<GestureSignal> {
-        val open = tracking && !consumedSwipe && !isDragging && !longPressFired
+        val dx = lastX - downX
+        val dy = lastY - downY
+        val inward = tracking && inwardOpen(dx, dy)
+        val open = tracking && !consumedSwipe && !isDragging && !longPressFired && !inward
         tracking = false
         isDragging = false
         consumedSwipe = false
-        return if (open) listOf(GestureSignal.Tap) else emptyList()
+        return when {
+            inward -> listOf(GestureSignal.InwardSwipe)
+            open -> listOf(GestureSignal.Tap)
+            else -> emptyList()
+        }
+    }
+
+    private fun inwardOpen(dx: Float, dy: Float): Boolean {
+        return !consumedSwipe && !longPressFired &&
+            config.isInward(dx) &&
+            abs(dx) >= config.touchSlopPx &&
+            abs(dx) >= abs(dy)
     }
 }
